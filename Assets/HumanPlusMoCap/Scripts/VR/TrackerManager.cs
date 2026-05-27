@@ -23,9 +23,7 @@ namespace HumanPlusMoCap.Scripts.VR
         public TrackerStatus.Types.Status HmdStatus { get; private set; } = TrackerStatus.Types.Status.Disconnected;
         public bool HmdAdded { get; private set; }
         public bool HasHmdReference { get; private set; }
-
-        private Vector3 _hmdReferencePosition;
-
+        
         private void Awake()
         {
             EnsureAnimator();
@@ -123,15 +121,8 @@ namespace HumanPlusMoCap.Scripts.VR
                 return false;
             }
 
-            _hmdReferencePosition = HmdPosition;
             HasHmdReference = true;
             return true;
-        }
-
-        public void ResetHmdReference()
-        {
-            _hmdReferencePosition = Vector3.zero;
-            HasHmdReference = false;
         }
 
         public void SendTrackerFrame(Bridge bridge, bool sendPosition, bool sendRotation)
@@ -174,7 +165,7 @@ namespace HumanPlusMoCap.Scripts.VR
                 return Vector3.zero;
             }
 
-            return HmdPosition - _hmdReferencePosition;
+            return new Vector3(HmdPosition.x, 0f, HmdPosition.z);
         }
 
         private void AddIfBoneExists(

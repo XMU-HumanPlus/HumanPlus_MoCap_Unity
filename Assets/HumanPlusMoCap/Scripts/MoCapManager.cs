@@ -67,6 +67,16 @@ namespace HumanPlusMoCap.Scripts
         /// </summary>
         private const int ExpectedJointCount = 24;
 
+        /// <summary>
+        /// Python 指令前缀
+        /// </summary>
+        private const string CommandPrefix = "CMD:";
+
+        /// <summary>
+        /// 校准完成指令
+        /// </summary>
+        private const string CalibrationDoneCommand = "CALIBRATION_DONE";
+
         #endregion
 
         #region 字段声明
@@ -126,6 +136,15 @@ namespace HumanPlusMoCap.Scripts
         /// 获取是否已连接
         /// </summary>
         public bool IsConnected => connectionState == ConnectionState.Connected;
+
+        #endregion
+
+        #region 事件
+
+        /// <summary>
+        /// 校准完成事件（供 UI 同步）
+        /// </summary>
+        public event Action CalibrationCompleted;
 
         #endregion
 
@@ -676,6 +695,14 @@ namespace HumanPlusMoCap.Scripts
             }
         }
 
+        /// <summary>
+        /// 向 Python 端发送重新校准指令（供 UI 调用）
+        /// </summary>
+        public void SendRecalibrateCommand()
+        {
+            Send("RECALIBRATE\n");
+        }
+
         #endregion
 
         #region 动作数据处理
@@ -699,15 +726,39 @@ namespace HumanPlusMoCap.Scripts
                 }
 
                 receiveBuffer += raw;
-                string[] motions = receiveBuffer.Split(new[] { '$' }, StringSplitOptions.RemoveEmptyEntries);
-
-                if (motions.Length < 2)
+                int lastDelimiter = receiveBuffer.LastIndexOf('$');
+                if (lastDelimiter < 0)
                 {
                     return;
                 }
 
-                receiveBuffer = motions[motions.Length - 1];
-                string poseAndTran = motions[0];
+                string completeChunk = receiveBuffer.Substring(0, lastDelimiter);
+                receiveBuffer = receiveBuffer.Substring(lastDelimiter + 1);
+                string[] frames = completeChunk.Split(new[] { '$' }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (frames.Length == 0)
+                {
+                    return;
+                }
+
+                string poseAndTran = null;
+                for (int i = 0; i < frames.Length; i++)
+                {
+                    if (TryHandleCommandFrame(frames[i]))
+                    {
+                        continue;
+                    }
+
+                    if (poseAndTran == null)
+                    {
+                        poseAndTran = frames[i];
+                    }
+                }
+
+                if (string.IsNullOrEmpty(poseAndTran))
+                {
+                    return;
+                }
 
                 string[] parts = poseAndTran.Split(new[] { '#' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 2)
@@ -726,6 +777,35 @@ namespace HumanPlusMoCap.Scripts
             {
                 Debug.LogError($"ProcessMotionData: 处理失败 - {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 处理来自 Python 的命令帧
+        /// </summary>
+        /// <param name="frame">单帧内容（不包含分隔符）</param>
+        /// <returns>是否为命令帧并已处理</returns>
+        private bool TryHandleCommandFrame(string frame)
+        {
+            if (string.IsNullOrEmpty(frame))
+            {
+                return false;
+            }
+
+            if (!frame.StartsWith(CommandPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string command = frame.Substring(CommandPrefix.Length).Trim();
+            if (string.Equals(command, CalibrationDoneCommand, StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.Log("ProcessMotionData: 收到校准完成指令");
+                CalibrationCompleted?.Invoke();
+                return true;
+            }
+
+            Debug.LogWarning($"ProcessMotionData: 未识别的指令 - {command}");
+            return true;
         }
 
         /// <summary>

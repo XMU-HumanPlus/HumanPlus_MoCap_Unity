@@ -180,18 +180,6 @@ namespace HumanPlusMoCap.Scripts.VR
             _trackersRegistered = false;
         }
 
-        [ContextMenu("Reset HMD Reference")]
-        public void ResetHmdReference()
-        {
-            EnsureTrackerManager();
-            if (trackerManager == null)
-            {
-                return;
-            }
-
-            trackerManager.ResetHmdReference();
-        }
-
         private void OnConnectionStateChanged(bool connected)
         {
             if (!connected)

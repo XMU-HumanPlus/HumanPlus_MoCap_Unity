@@ -419,14 +419,20 @@ namespace HumanPlusMoCap.Scripts
 		/// </summary>
 		private void SetPosition()
 		{
-			if (!affectRootPosition) return;
-
 			// 计算目标角色的新位置：
 			// 1. 计算标准SMPL模型根节点的位置变化
 			// 2. 根据缩放比例调整位置变化
 			// 3. 将调整后的位置变化应用到目标角色的初始位置上
-			selfRoot.position =
+			Vector3 targetPosition =
 				(srcRoot.position - srcInitPosition) * scale + selfInitPosition;
+
+			if (!affectRootPosition)
+			{
+				targetPosition.x = selfInitPosition.x;
+				targetPosition.z = selfInitPosition.z;
+			}
+
+			selfRoot.position = targetPosition;
 		}
 	}
 }
