@@ -15,6 +15,7 @@ namespace HumanPlusMoCap.Scripts
 
 		[Header("MoCap Global Weight")]
 		[Range(0f, 1f)]
+		[Tooltip("0: fully animation, 1: fully mocap")]
 		public float globalWeight = 1f;
 
 		[Header("Half Body Weight")]
