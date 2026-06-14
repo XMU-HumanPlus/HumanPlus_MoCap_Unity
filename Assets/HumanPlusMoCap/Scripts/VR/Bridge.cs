@@ -8,6 +8,9 @@ using UnityEngine;
 
 namespace HumanPlusMoCap.Scripts.VR
 {
+    /// <summary>
+    /// SlimeVR/SteamVR 驱动的命名管道桥接器，负责读写 protobuf 消息。
+    /// </summary>
     public sealed class Bridge : IDisposable
     {
         private readonly string _pipeName;
@@ -29,11 +32,24 @@ namespace HumanPlusMoCap.Scripts.VR
         private TrackerStatus.Types.Status _hmdStatus = TrackerStatus.Types.Status.Disconnected;
         private bool _hmdAdded;
 
+        /// <summary>
+        /// 连接状态变更事件（true=已连接）。
+        /// </summary>
         public event Action<bool> ConnectionStateChanged;
 
+        /// <summary>
+        /// 是否已连接到驱动。
+        /// </summary>
         public bool IsConnected => _connected;
+
+        /// <summary>
+        /// 是否正在运行服务线程。
+        /// </summary>
         public bool IsRunning => _running;
 
+        /// <summary>
+        /// 驱动端是否已注册 HMD。
+        /// </summary>
         public bool HmdAdded
         {
             get
@@ -45,12 +61,18 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 创建命名管道桥接器。
+        /// </summary>
         public Bridge(string pipeName, bool verbose)
         {
             _pipeName = NormalizePipeName(pipeName);
             _verbose = verbose;
         }
 
+        /// <summary>
+        /// 启动管道服务线程。
+        /// </summary>
         public void Start()
         {
             if (_running)
@@ -63,6 +85,9 @@ namespace HumanPlusMoCap.Scripts.VR
             _workerThread.Start();
         }
 
+        /// <summary>
+        /// 停止服务线程并断开连接。
+        /// </summary>
         public void Stop()
         {
             if (!_running)
@@ -80,6 +105,9 @@ namespace HumanPlusMoCap.Scripts.VR
             SetConnected(false);
         }
 
+        /// <summary>
+        /// 通知驱动新增追踪器。
+        /// </summary>
         public bool SendTrackerAdded(Tracker tracker)
         {
             if (tracker == null)
@@ -101,6 +129,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return SendMessage(message);
         }
 
+        /// <summary>
+        /// 发送追踪器状态。
+        /// </summary>
         public bool SendTrackerStatus(int trackerId, TrackerStatus.Types.Status status)
         {
             var message = new ProtobufMessage
@@ -115,6 +146,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return SendMessage(message);
         }
 
+        /// <summary>
+        /// 发送追踪器位置与旋转。
+        /// </summary>
         public bool SendPosition(
             int trackerId,
             Vector3? position,
@@ -147,6 +181,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return SendMessage(message);
         }
 
+        /// <summary>
+        /// 发送追踪器电量信息。
+        /// </summary>
         public bool SendBattery(int trackerId, float batteryLevel, bool isCharging)
         {
             var message = new ProtobufMessage
@@ -162,6 +199,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return SendMessage(message);
         }
 
+        /// <summary>
+        /// 获取 HMD 姿态与时间戳。
+        /// </summary>
         public bool TryGetHmdPose(out Vector3 position, out Quaternion rotation, out double timestamp)
         {
             lock (_stateLock)
@@ -174,6 +214,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return timestamp > 0d;
         }
 
+        /// <summary>
+        /// 获取 HMD 电量信息。
+        /// </summary>
         public bool TryGetHmdBattery(out float batteryLevel, out bool isCharging)
         {
             lock (_stateLock)
@@ -185,6 +228,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return true;
         }
 
+        /// <summary>
+        /// 获取 HMD 连接状态。
+        /// </summary>
         public bool TryGetHmdStatus(out TrackerStatus.Types.Status status)
         {
             lock (_stateLock)
@@ -195,6 +241,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return true;
         }
 
+        /// <summary>
+        /// 序列化并发送 protobuf 消息。
+        /// </summary>
         private bool SendMessage(ProtobufMessage message)
         {
             if (message == null)
@@ -205,6 +254,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return SendPayload(message.ToByteArray());
         }
 
+        /// <summary>
+        /// 管道主循环：等待连接并读取数据。
+        /// </summary>
         private void ServerLoop()
         {
             while (_running)
@@ -258,6 +310,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 读取并解析驱动侧的消息流。
+        /// </summary>
         private void RunReadLoop(NamedPipeServerStream pipe)
         {
             byte[] sizeBuffer = new byte[4];
@@ -304,6 +359,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 从流中读取指定字节数。
+        /// </summary>
         private bool TryReadExact(Stream stream, byte[] buffer, int length)
         {
             int offset = 0;
@@ -320,6 +378,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return offset == length;
         }
 
+        /// <summary>
+        /// 分发来自驱动的消息。
+        /// </summary>
         private void HandleIncomingMessage(ProtobufMessage message)
         {
             if (message == null)
@@ -344,6 +405,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 更新 HMD 姿态缓存。
+        /// </summary>
         private void UpdateHmdPose(Position position)
         {
             if (position == null)
@@ -359,6 +423,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 更新 HMD 电量缓存。
+        /// </summary>
         private void UpdateHmdBattery(Battery battery)
         {
             if (battery == null)
@@ -373,6 +440,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 更新 HMD 状态缓存。
+        /// </summary>
         private void UpdateHmdStatus(TrackerStatus status)
         {
             if (status == null)
@@ -386,6 +456,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 标记 HMD 已被驱动端注册。
+        /// </summary>
         private void UpdateHmdAdded(TrackerAdded trackerAdded)
         {
             if (trackerAdded == null)
@@ -399,6 +472,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 写入带长度前缀的 payload。
+        /// </summary>
         private bool SendPayload(byte[] payload)
         {
             if (!_running || !_connected || payload == null || payload.Length == 0)
@@ -444,6 +520,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 断开并释放当前管道。
+        /// </summary>
         private void DisconnectPipe()
         {
             NamedPipeServerStream localPipe;
@@ -478,6 +557,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 更新连接状态并触发事件。
+        /// </summary>
         private void SetConnected(bool connected)
         {
             if (_connected == connected)
@@ -489,6 +571,9 @@ namespace HumanPlusMoCap.Scripts.VR
             ConnectionStateChanged?.Invoke(connected);
         }
 
+        /// <summary>
+        /// 规范化管道名称（剥离前缀）。
+        /// </summary>
         private static string NormalizePipeName(string pipeName)
         {
             const string prefix = @"\\.\pipe\";
@@ -506,6 +591,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return pipeName;
         }
 
+        /// <summary>
+        /// 释放资源并停止服务。
+        /// </summary>
         public void Dispose()
         {
             Stop();

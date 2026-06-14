@@ -4,14 +4,23 @@ using UnityEngine;
 
 namespace HumanPlusMoCap.Scripts.VR
 {
+    /// <summary>
+    /// VRChat OSC 发送/接收处理器，负责发送追踪器姿态并接收头部姿态用于对齐。
+    /// </summary>
     public class VRCOSCHandler : MonoBehaviour
     {
+        /// <summary>
+        /// 旋转发送格式。
+        /// </summary>
         public enum RotationFormat
         {
             EulerDegrees,
             Quaternion
         }
 
+        /// <summary>
+        /// 坐标空间模式。
+        /// </summary>
         public enum SpaceMode
         {
             World,
@@ -78,6 +87,9 @@ namespace HumanPlusMoCap.Scripts.VR
         private const string VrcLeftWristPoseAddress = "/tracking/vrsystem/leftwrist/pose";
         private const string VrcRightWristPoseAddress = "/tracking/vrsystem/rightwrist/pose";
 
+        /// <summary>
+        /// 初始化缩放与 OSC 组件。
+        /// </summary>
         private void Awake()
         {
             UpdateScaleFactor();
@@ -85,6 +97,9 @@ namespace HumanPlusMoCap.Scripts.VR
             EnsureReceiver();
         }
 
+        /// <summary>
+        /// 启用时确保收发器可用并重置发送节流。
+        /// </summary>
         private void OnEnable()
         {
             EnsureTransmitter();
@@ -98,6 +113,9 @@ namespace HumanPlusMoCap.Scripts.VR
             _nextSendTime = 0f;
         }
 
+        /// <summary>
+        /// 禁用时释放发送器并关闭接收器。
+        /// </summary>
         private void OnDisable()
         {
             DisposeTransmitter();
@@ -107,12 +125,18 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 销毁时清理 OSC 资源。
+        /// </summary>
         private void OnDestroy()
         {
             DisposeTransmitter();
             DisposeReceiver();
         }
 
+        /// <summary>
+        /// 编辑器校验：保证追踪器数组长度并刷新缩放系数。
+        /// </summary>
         private void OnValidate()
         {
             if (trackers == null || trackers.Length != 8)
@@ -123,6 +147,9 @@ namespace HumanPlusMoCap.Scripts.VR
             UpdateScaleFactor();
         }
 
+        /// <summary>
+        /// 依据发送频率按需推送追踪器数据。
+        /// </summary>
         private void Update()
         {
             if (!sendEnabled)
@@ -138,6 +165,9 @@ namespace HumanPlusMoCap.Scripts.VR
             SendTrackers();
         }
 
+        /// <summary>
+        /// 从 Animator 自动映射 VRChat 追踪器节点。
+        /// </summary>
         [ContextMenu("Auto Map Trackers From Animator")]
         private void AutoMapTrackersFromAnimator()
         {
@@ -168,6 +198,9 @@ namespace HumanPlusMoCap.Scripts.VR
             trackers[7] = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
         }
 
+        /// <summary>
+        /// 发送 VRChat Yaw 校准消息。
+        /// </summary>
         [ContextMenu("Send VRChat Yaw Calibration")]
         public void SendVrChatYawCalibration()
         {
@@ -203,6 +236,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 发送头部与全身追踪器的姿态数据。
+        /// </summary>
         private void SendTrackers()
         {
             EnsureTransmitter();
@@ -244,6 +280,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 计算基于 VRChat 头部回传的全局位置偏移。
+        /// </summary>
         private Vector3 GetGlobalPositionOffsetFromVrcHead()
         {
             if (!applyVrcHeadPositionOffset || !_hasHeadPose || headReference == null)
@@ -255,6 +294,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return _receivedHeadPosition - localHeadPosition;
         }
 
+        /// <summary>
+        /// 根据空间模式与缩放设置获取位置。
+        /// </summary>
         private Vector3 GetPosition(Transform target)
         {
             Vector3 position = target.position;
@@ -269,6 +311,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return position;
         }
 
+        /// <summary>
+        /// 根据空间模式与旋转偏移获取旋转。
+        /// </summary>
         private Quaternion GetRotation(Transform target)
         {
             Quaternion rotation = target.rotation;
@@ -286,6 +331,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return rotation;
         }
 
+        /// <summary>
+        /// 根据配置选择欧拉角或四元数发送。
+        /// </summary>
         private void SendRotation(string address, Quaternion rotation)
         {
             if (string.IsNullOrWhiteSpace(address))
@@ -302,6 +350,9 @@ namespace HumanPlusMoCap.Scripts.VR
             SendVector3(address, rotation.eulerAngles);
         }
 
+        /// <summary>
+        /// 发送三维向量 OSC 消息。
+        /// </summary>
         private void SendVector3(string address, Vector3 value)
         {
             if (string.IsNullOrWhiteSpace(address) || _transmitter == null)
@@ -328,6 +379,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 发送四元数 OSC 消息。
+        /// </summary>
         private void SendQuaternion(string address, Quaternion rotation)
         {
             if (string.IsNullOrWhiteSpace(address) || _transmitter == null)
@@ -355,6 +409,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 根据发送者与用户身高计算缩放比例。
+        /// </summary>
         private void UpdateScaleFactor()
         {
             if (senderAvatarHeight <= 0f)
@@ -366,6 +423,9 @@ namespace HumanPlusMoCap.Scripts.VR
             _scaleFactor = userHeightInMeters / senderAvatarHeight;
         }
 
+        /// <summary>
+        /// 初始化或更新 OSC 发送器参数。
+        /// </summary>
         private void EnsureTransmitter()
         {
             if (!sendEnabled)
@@ -398,6 +458,9 @@ namespace HumanPlusMoCap.Scripts.VR
             _lastPort = remotePort;
         }
 
+        /// <summary>
+        /// 初始化或更新 OSC 接收器，并绑定回调。
+        /// </summary>
         private void EnsureReceiver()
         {
             if (!receiveEnabled)
@@ -436,12 +499,18 @@ namespace HumanPlusMoCap.Scripts.VR
             _receiverBound = true;
         }
 
+        /// <summary>
+        /// 释放接收器状态。
+        /// </summary>
         private void DisposeReceiver()
         {
             _receiver = null;
             _receiverBound = false;
         }
 
+        /// <summary>
+        /// 接收 VRChat 头部姿态回调。
+        /// </summary>
         private void OnHeadPoseReceived(OSCMessage message)
         {
             if (!TryReadPose(message, out Vector3 position, out Vector3 rotationEuler))
@@ -456,6 +525,9 @@ namespace HumanPlusMoCap.Scripts.VR
             _hasHeadPose = true;
         }
 
+        /// <summary>
+        /// 接收 VRChat 左手腕姿态回调。
+        /// </summary>
         private void OnLeftWristPoseReceived(OSCMessage message)
         {
             if (!TryReadPose(message, out Vector3 position, out Vector3 rotationEuler))
@@ -470,6 +542,9 @@ namespace HumanPlusMoCap.Scripts.VR
             _hasLeftWristPose = true;
         }
 
+        /// <summary>
+        /// 接收 VRChat 右手腕姿态回调。
+        /// </summary>
         private void OnRightWristPoseReceived(OSCMessage message)
         {
             if (!TryReadPose(message, out Vector3 position, out Vector3 rotationEuler))
@@ -484,6 +559,9 @@ namespace HumanPlusMoCap.Scripts.VR
             _hasRightWristPose = true;
         }
 
+        /// <summary>
+        /// 从 OSC 消息解析位置与欧拉角。
+        /// </summary>
         private static bool TryReadPose(OSCMessage message, out Vector3 position, out Vector3 rotationEuler)
         {
             position = Vector3.zero;
@@ -508,6 +586,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return true;
         }
 
+        /// <summary>
+        /// 读取 OSC 数值并转换为 float。
+        /// </summary>
         private static bool TryReadFloat(OSCValue oscValue, out float value)
         {
             value = 0f;
@@ -535,6 +616,9 @@ namespace HumanPlusMoCap.Scripts.VR
             }
         }
 
+        /// <summary>
+        /// 判断是否到达发送时机。
+        /// </summary>
         private bool IsDue(ref float nextTime, float rateHz)
         {
             if (rateHz <= 0f)
@@ -552,6 +636,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return true;
         }
 
+        /// <summary>
+        /// 接收错误只记录一次，避免刷屏。
+        /// </summary>
         private void LogReceiveErrorOnce(string error)
         {
             if (_loggedReceiveError)
@@ -563,6 +650,9 @@ namespace HumanPlusMoCap.Scripts.VR
             Debug.LogError($"[VrChatOscMocapSender] OSC receive failed: {error}");
         }
 
+        /// <summary>
+        /// 释放发送器状态。
+        /// </summary>
         private void DisposeTransmitter()
         {
             _transmitter = null;

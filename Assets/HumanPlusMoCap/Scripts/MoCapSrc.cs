@@ -240,7 +240,10 @@ namespace HumanPlusMoCap.Scripts
 			if (srcRoot == null || selfRoot == null) return;
 
 			SetJointsRotation();
-			SetPosition();
+			if (affectRootPosition)
+			{
+				SetPosition();
+			}
 		}
 
 		/// <summary>

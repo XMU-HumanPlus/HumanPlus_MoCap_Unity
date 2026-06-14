@@ -640,6 +640,14 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 400030, guid: 0cf19ac73daf8f748ae4fdc1830eb310, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400040, guid: 0cf19ac73daf8f748ae4fdc1830eb310, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 400044, guid: 0cf19ac73daf8f748ae4fdc1830eb310, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1

@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace HumanPlusMoCap.Scripts.VR
 {
+    /// <summary>
+    /// 追踪器角色枚举（与驱动端约定的角色 ID 对应）。
+    /// </summary>
     public enum TrackerRole
     {
         None = 0,
@@ -21,6 +24,9 @@ namespace HumanPlusMoCap.Scripts.VR
         Head = 15
     }
 
+    /// <summary>
+    /// 单个追踪器配置与姿态计算。
+    /// </summary>
     [Serializable]
     public class Tracker
     {
@@ -33,13 +39,39 @@ namespace HumanPlusMoCap.Scripts.VR
         [SerializeField] private Vector3 positionOffset;
         [SerializeField] private Vector3 rotationOffsetEuler;
 
+        /// <summary>
+        /// 追踪器 ID。
+        /// </summary>
         public int Id => id;
+
+        /// <summary>
+        /// 追踪器序列号。
+        /// </summary>
         public string Serial => serial;
+
+        /// <summary>
+        /// 追踪器名称。
+        /// </summary>
         public string TrackerName => trackerName;
+
+        /// <summary>
+        /// 追踪器角色。
+        /// </summary>
         public TrackerRole Role => role;
+
+        /// <summary>
+        /// 追踪目标 Transform。
+        /// </summary>
         public Transform Target => target;
+
+        /// <summary>
+        /// 是否启用该追踪器。
+        /// </summary>
         public bool Enabled => enabled;
 
+        /// <summary>
+        /// 创建追踪器实例。
+        /// </summary>
         public Tracker(int id, string serial, string trackerName, TrackerRole role, Transform target)
         {
             this.id = id;
@@ -52,6 +84,9 @@ namespace HumanPlusMoCap.Scripts.VR
             rotationOffsetEuler = Vector3.zero;
         }
 
+        /// <summary>
+        /// 获取追踪器姿态并转换到 SteamVR 右手系。
+        /// </summary>
         public bool TryGetPose(out Vector3 position, out Quaternion rotation)
         {
             if (!enabled || target == null)
@@ -66,7 +101,9 @@ namespace HumanPlusMoCap.Scripts.VR
             return ToSteamVrRightHanded(ref position, ref rotation);
         }
 
+        /// <summary>
         /// Unity 左手系到 SteamVR 右手系转换。
+        /// </summary>
         private static bool ToSteamVrRightHanded(ref Vector3 position, ref Quaternion rotation)
         {
             if (position == null || rotation == null)
