@@ -30,6 +30,9 @@ namespace HumanPlusMoCap.Scripts
 		[Header("Affect Root Position")]
 		[Tooltip("是否让动捕影响角色整体位置")]
 		public bool affectRootPosition = true;
+		public bool affectRootPosX = false;
+		public bool affectRootPosY = true;
+		public bool affectRootPosZ = false;
 		
 		[Header("Affect Root Rotation")]
 		[Tooltip("是否让动捕影响角色整体旋转")]
@@ -38,6 +41,11 @@ namespace HumanPlusMoCap.Scripts
 		[Header("Force Upper Body Upright")]
 		[Tooltip("是否强制挺直上半身")]
 		public bool forceUpperBodyUpright = false;
+		
+		[Header("Clamp Root To Floor")]
+		[Tooltip("防止根节点陷入地面")]
+		public bool clampRootToFloor = true;
+		public float floorHeight = 0.0f;
 		
 		/// <summary>
 		/// 下半身关节索引数组，这些索引对应SmplToHuman中的下半身骨骼
@@ -244,6 +252,12 @@ namespace HumanPlusMoCap.Scripts
 			{
 				SetPosition();
 			}
+			if (clampRootToFloor)
+			{
+				Vector3 pos = selfRoot.position;
+				pos.y = Mathf.Max(pos.y, floorHeight);
+				selfRoot.position = pos;
+			}
 		}
 
 		/// <summary>
@@ -427,15 +441,14 @@ namespace HumanPlusMoCap.Scripts
 			// 1. 计算标准SMPL模型根节点的位置变化
 			// 2. 根据缩放比例调整位置变化
 			// 3. 将调整后的位置变化应用到目标角色的初始位置上
-			Vector3 targetPosition =
-				(srcRoot.position - srcInitPosition) * scale + selfInitPosition;
+			Vector3 targetPosition = (srcRoot.position - srcInitPosition) * scale + selfInitPosition;
+			
+			if (affectRootPosX) targetPosition.x = selfInitPosition.x;
+			if (affectRootPosY) targetPosition.y = selfInitPosition.y;
+			if (affectRootPosZ) targetPosition.z = selfInitPosition.z;
 
-			if (!affectRootPosition)
-			{
-				targetPosition.x = selfInitPosition.x;
-				targetPosition.z = selfInitPosition.z;
-			}
-
+			if (clampRootToFloor) targetPosition.y = Mathf.Max(targetPosition.y, floorHeight);
+			
 			selfRoot.position = targetPosition;
 		}
 	}

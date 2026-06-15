@@ -1055,8 +1055,13 @@ MonoBehaviour:
   upperBodyWeight: 1
   lowerBodyWeight: 1
   affectRootPosition: 0
+  affectRootPosX: 0
+  affectRootPosY: 1
+  affectRootPosZ: 0
   affectRootRotation: 1
   forceUpperBodyUpright: 0
+  clampRootToFloor: 1
+  floorHeight: 0
   jointsInfo:
   - jointName: Hips
     weight: 1
@@ -1853,9 +1858,14 @@ MonoBehaviour:
   globalWeight: 1
   upperBodyWeight: 1
   lowerBodyWeight: 1
-  affectRootPosition: 0
+  affectRootPosition: 1
+  affectRootPosX: 0
+  affectRootPosY: 1
+  affectRootPosZ: 0
   affectRootRotation: 1
   forceUpperBodyUpright: 0
+  clampRootToFloor: 1
+  floorHeight: 0
   jointsInfo:
   - jointName: Hips
     weight: 1
