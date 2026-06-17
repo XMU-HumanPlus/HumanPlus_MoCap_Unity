@@ -154,13 +154,16 @@ namespace HumanPlusMoCap.Scripts
         {
             SetStatusText("请保持T-Pose（3）");
             yield return new WaitForSeconds(1f);
-
+            
             SetStatusText("请保持T-Pose（2）");
             yield return new WaitForSeconds(1f);
 
             SetStatusText("请保持T-Pose（1）");
+            yield return new WaitForSeconds(.5f);
+
+            SetStatusText("校准中，请保持T-Pose");
             moCapManager.SendRecalibrateCommand();
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(.5f);
 
             SetStatusText("请等待");
             recalibrateRoutine = null;

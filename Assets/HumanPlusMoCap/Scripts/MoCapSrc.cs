@@ -443,9 +443,9 @@ namespace HumanPlusMoCap.Scripts
 			// 3. 将调整后的位置变化应用到目标角色的初始位置上
 			Vector3 targetPosition = (srcRoot.position - srcInitPosition) * scale + selfInitPosition;
 			
-			if (affectRootPosX) targetPosition.x = selfInitPosition.x;
-			if (affectRootPosY) targetPosition.y = selfInitPosition.y;
-			if (affectRootPosZ) targetPosition.z = selfInitPosition.z;
+			if (!affectRootPosX) targetPosition.x = selfInitPosition.x;
+			if (!affectRootPosY) targetPosition.y = selfInitPosition.y;
+			if (!affectRootPosZ) targetPosition.z = selfInitPosition.z;
 
 			if (clampRootToFloor) targetPosition.y = Mathf.Max(targetPosition.y, floorHeight);
 			
