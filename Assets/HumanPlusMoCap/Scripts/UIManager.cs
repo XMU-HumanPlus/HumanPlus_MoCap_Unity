@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -23,9 +25,26 @@ namespace HumanPlusMoCap.Scripts
 
         [Header("UI")]
         [SerializeField] private Text statusText;
+        [SerializeField] private Dropdown sceneDropdown;
+
+        [Header("Window")]
+        [SerializeField] private int minimumWindowWidth = 1280;
+        [SerializeField] private int minimumWindowHeight = 720;
+        [SerializeField] private float windowSizeCheckInterval = 0.25f;
 
         private Coroutine recalibrateRoutine;
         private Coroutine calibrationSuccessRoutine;
+        private readonly List<string> buildSceneNames = new List<string>();
+        private float nextWindowSizeCheckTime;
+
+        /// <summary>
+        /// 初始化场景切换下拉框。
+        /// </summary>
+        private void Start()
+        {
+            InitializeSceneDropdown();
+            EnforceMinimumWindowSize(force: true);
+        }
 
         /// <summary>
         /// 订阅校准完成事件。
@@ -47,6 +66,14 @@ namespace HumanPlusMoCap.Scripts
             {
                 moCapManager.CalibrationCompleted -= HandleCalibrationCompleted;
             }
+        }
+
+        /// <summary>
+        /// 在打包版窗口模式下限制最小窗口尺寸。
+        /// </summary>
+        private void Update()
+        {
+            EnforceMinimumWindowSize(force: false);
         }
 
         /// <summary>
@@ -128,6 +155,80 @@ namespace HumanPlusMoCap.Scripts
         }
 
         /// <summary>
+        /// 初始化场景下拉框选项，并默认选中当前场景。
+        /// </summary>
+        public void InitializeSceneDropdown()
+        {
+            if (sceneDropdown == null)
+            {
+                sceneDropdown = FindObjectOfType<Dropdown>();
+            }
+
+            if (sceneDropdown == null)
+            {
+                return;
+            }
+
+            buildSceneNames.Clear();
+
+            int activeSceneIndex = SceneManager.GetActiveScene().buildIndex;
+            List<Dropdown.OptionData> options = new List<Dropdown.OptionData>();
+
+            for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
+            {
+                string scenePath = SceneUtility.GetScenePathByBuildIndex(i);
+                if (string.IsNullOrEmpty(scenePath))
+                {
+                    continue;
+                }
+
+                string sceneName = System.IO.Path.GetFileNameWithoutExtension(scenePath);
+                buildSceneNames.Add(sceneName);
+                options.Add(new Dropdown.OptionData(sceneName));
+            }
+
+            sceneDropdown.onValueChanged.RemoveListener(OnSceneDropdownValueChanged);
+            sceneDropdown.ClearOptions();
+            sceneDropdown.AddOptions(options);
+
+            if (options.Count == 0)
+            {
+                sceneDropdown.interactable = false;
+                Debug.LogWarning("[UIManager] Build Settings 中没有可用场景，场景切换下拉框已禁用");
+                return;
+            }
+
+            sceneDropdown.interactable = options.Count > 1;
+
+            int dropdownIndex = activeSceneIndex >= 0 && activeSceneIndex < options.Count ? activeSceneIndex : 0;
+            sceneDropdown.SetValueWithoutNotify(dropdownIndex);
+            sceneDropdown.RefreshShownValue();
+            sceneDropdown.onValueChanged.AddListener(OnSceneDropdownValueChanged);
+        }
+
+        /// <summary>
+        /// 下拉框回调：切换到选中的场景。
+        /// </summary>
+        /// <param name="dropdownIndex">下拉框索引</param>
+        public void OnSceneDropdownValueChanged(int dropdownIndex)
+        {
+            if (dropdownIndex < 0 || dropdownIndex >= buildSceneNames.Count)
+            {
+                Debug.LogWarning($"[UIManager] 非法场景索引: {dropdownIndex}");
+                return;
+            }
+
+            string targetSceneName = buildSceneNames[dropdownIndex];
+            string currentSceneName = SceneManager.GetActiveScene().name;
+            if (targetSceneName == currentSceneName)
+            {
+                return;
+            }
+
+            SceneManager.LoadScene(targetSceneName);
+        }
+
+        /// <summary>
         /// 校准完成回调：停止倒计时并提示成功。
         /// </summary>
         private void HandleCalibrationCompleted()
@@ -145,6 +246,35 @@ namespace HumanPlusMoCap.Scripts
 
             calibrationSuccessRoutine = StartCoroutine(ShowCalibrationSuccess());
             calibrationCompleted?.Invoke();
+        }
+
+        /// <summary>
+        /// 在 Windows 打包版窗口模式下保持最小窗口尺寸。
+        /// </summary>
+        private void EnforceMinimumWindowSize(bool force)
+        {
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+            if (!force && Time.unscaledTime < nextWindowSizeCheckTime)
+            {
+                return;
+            }
+
+            nextWindowSizeCheckTime = Time.unscaledTime + Mathf.Max(0.05f, windowSizeCheckInterval);
+
+            if (Screen.fullScreen)
+            {
+                return;
+            }
+
+            int targetWidth = Mathf.Max(Screen.width, minimumWindowWidth);
+            int targetHeight = Mathf.Max(Screen.height, minimumWindowHeight);
+            if (targetWidth == Screen.width && targetHeight == Screen.height)
+            {
+                return;
+            }
+
+            Screen.SetResolution(targetWidth, targetHeight, FullScreenMode.Windowed);
+#endif
         }
 
         /// <summary>

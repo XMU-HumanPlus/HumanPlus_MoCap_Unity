@@ -117,6 +117,8 @@ namespace HumanPlusMoCap.Scripts
         private bool initialConnectionAttempted;
         private bool asyncConnecting;
         private float connectTimeout = 3f;
+        private IAsyncResult connectResult;
+        private float connectStartTime;
 
         private Transform translationJoint;
         private Quaternion[] tPose;
@@ -303,12 +305,27 @@ namespace HumanPlusMoCap.Scripts
         {
             if (asyncConnecting)
             {
+                if (connectResult != null && !connectResult.IsCompleted &&
+                    Time.realtimeSinceStartup - connectStartTime >= connectTimeout)
+                {
+                    Debug.LogWarning($"HandleConnection: 连接超时 ({connectTimeout}秒)");
+
+                    try { clientSocket?.Close(); }
+                    catch
+                    {
+                    }
+
+                    clientSocket = null;
+                    connectResult = null;
+                    asyncConnecting = false;
+                    OnDisconnected();
+                }
                 return;
             }
 
             if (connectionState == ConnectionState.Connected)
             {
-                if (!IsSocketConnected())
+                if (clientSocket == null || !clientSocket.Connected)
                 {
                     Debug.LogWarning("HandleConnection: 检测到连接已断开");
                     OnDisconnected();
@@ -334,46 +351,6 @@ namespace HumanPlusMoCap.Scripts
                 Debug.Log($"HandleConnection: 尝试重新连接 (间隔 {reconnectInterval} 秒)...");
                 reconnectTimer = reconnectInterval;
                 Connect();
-            }
-        }
-
-        /// <summary>
-        /// 检查Socket是否仍处于连接状态
-        /// </summary>
-        /// <returns>是否已连接</returns>
-        private bool IsSocketConnected()
-        {
-            try
-            {
-                if (clientSocket == null || !clientSocket.Connected)
-                {
-                    return false;
-                }
-
-                bool readable = clientSocket.Poll(0, SelectMode.SelectRead);
-                bool writable = clientSocket.Poll(0, SelectMode.SelectWrite);
-
-                if (readable && !writable)
-                {
-                    return false;
-                }
-
-                if (readable)
-                {
-                    byte[] buffer = new byte[1];
-                    int received = clientSocket.Receive(buffer, SocketFlags.Peek);
-                    return received > 0;
-                }
-
-                return true;
-            }
-            catch (SocketException)
-            {
-                return false;
-            }
-            catch (ObjectDisposedException)
-            {
-                return false;
             }
         }
 
@@ -419,6 +396,8 @@ namespace HumanPlusMoCap.Scripts
 
             connectionState = ConnectionState.Connecting;
             asyncConnecting = true;
+            connectResult = null;
+            connectStartTime = Time.realtimeSinceStartup;
 
             try
             {
@@ -435,91 +414,91 @@ namespace HumanPlusMoCap.Scripts
                 clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 clientSocket.Blocking = false;
 
-                IAsyncResult result = clientSocket.BeginConnect(
+                connectResult = clientSocket.BeginConnect(
                     new IPEndPoint(IPAddress.Parse(serverIp), port),
                     ConnectCallback,
-                    null);
-
-                float timeoutTimer = 0f;
-                while (!result.IsCompleted && timeoutTimer < connectTimeout)
-                {
-                    timeoutTimer += Time.deltaTime;
-                }
-
-                if (!result.IsCompleted)
-                {
-                    Debug.LogWarning($"Connect: 连接超时 ({connectTimeout}秒)");
-                    try { clientSocket.Close(); }
-                    catch
-                    {
-                    }
-
-                    clientSocket = null;
-                    asyncConnecting = false;
-                    OnDisconnected();
-                }
+                    clientSocket);
             }
             catch (SocketException ex)
             {
                 Debug.LogError($"Connect: Socket错误 - {ex.Message} (错误码: {ex.ErrorCode})");
                 asyncConnecting = false;
+                connectResult = null;
                 OnDisconnected();
             }
             catch (ArgumentException ex)
             {
                 Debug.LogError($"Connect: 参数错误 - {ex.Message}");
                 asyncConnecting = false;
+                connectResult = null;
                 OnDisconnected();
             }
             catch (ObjectDisposedException ex)
             {
                 Debug.LogError($"Connect: Socket已释放 - {ex.Message}");
                 asyncConnecting = false;
+                connectResult = null;
                 OnDisconnected();
             }
             catch (Exception ex)
             {
                 Debug.LogError($"Connect: 未知错误 - {ex.Message}");
                 asyncConnecting = false;
+                connectResult = null;
                 OnDisconnected();
             }
         }
-
         /// <summary>
         /// 异步连接完成的回调函数
         /// </summary>
         /// <param name="result">异步操作结果</param>
         private void ConnectCallback(IAsyncResult result)
         {
+            Socket socket = result.AsyncState as Socket;
+
             try
             {
-                if (clientSocket == null)
+                if (socket == null)
                 {
                     asyncConnecting = false;
+                    connectResult = null;
                     return;
                 }
 
-                clientSocket.EndConnect(result);
-                clientSocket.Blocking = true;
+                if (clientSocket != socket)
+                {
+                    try { socket.Close(); }
+                    catch
+                    {
+                    }
+                    return;
+                }
+
+                socket.EndConnect(result);
+                socket.Blocking = true;
                 asyncConnecting = false;
+                connectResult = null;
                 OnConnected();
             }
             catch (SocketException ex)
             {
                 Debug.LogError($"ConnectCallback: 连接失败 - {ex.Message}");
                 asyncConnecting = false;
+                connectResult = null;
                 OnDisconnected();
             }
             catch (ObjectDisposedException)
             {
                 Debug.LogWarning("ConnectCallback: Socket已关闭");
                 asyncConnecting = false;
+                connectResult = null;
                 OnDisconnected();
             }
             catch (Exception ex)
             {
                 Debug.LogError($"ConnectCallback: 未知错误 - {ex.Message}");
                 asyncConnecting = false;
+                connectResult = null;
                 OnDisconnected();
             }
         }
@@ -1268,3 +1247,4 @@ namespace HumanPlusMoCap.Scripts
         #endregion
     }
 }
+
